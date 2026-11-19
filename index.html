@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI助手</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ 登录 / 注册 ============ -->
+<div class="auth" id="authGate">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-logo">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="7" width="16" height="12" rx="3"></rect>
+          <path d="M12 4v3M9 12h.01M15 12h.01M9.5 16h5"></path>
+        </svg>
+      </span>
+      <span>AI助手</span>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab on" data-tab="login">登录</button>
+      <button class="auth-tab" data-tab="register">注册</button>
+    </div>
+
+    <div class="field">
+      <label for="authUser">用户名</label>
+      <input type="text" id="authUser" placeholder="2~32 位中文、字母、数字或下划线" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="authPass">密码</label>
+      <input type="password" id="authPass" placeholder="至少 6 位" autocomplete="current-password">
+    </div>
+    <div class="field" id="authPass2Field" hidden>
+      <label for="authPass2">确认密码</label>
+      <input type="password" id="authPass2" placeholder="再输入一次" autocomplete="new-password">
+    </div>
+
+    <button class="primary-btn block" id="authSubmit">登 录</button>
+    <p class="auth-msg" id="authMsg"></p>
+    <p class="auth-foot">账号保存在项目目录的 users.json 里，只存加盐哈希、不存明文密码。</p>
+  </div>
+</div>
+
+<!-- ============ 主应用（登录后才显示） ============ -->
+<div class="app" id="app" hidden>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="7" width="16" height="12" rx="3"></rect>
+            <path d="M12 4v3M9 12h.01M15 12h.01M9.5 16h5"></path>
+          </svg>
+        </span>
+        <span class="brand-text">AI助手</span>
+      </div>
+      <button class="icon-btn" id="collapseBtn" title="收起 / 展开侧栏">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 6l-6 6 6 6"></path>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="menu" id="menu"></nav>
+
+    <div class="sidebar-user" id="userRow">
+      <span class="avatar" id="userAvatar">A</span>
+      <span class="menu-label" id="userName"></span>
+      <button class="icon-btn" id="logoutBtn" title="退出登录">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sidebar-foot">
+      <span class="dot" id="statusDot"></span>
+      <span class="status-text" id="statusText">未连接后端</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 class="topbar-title" id="viewTitle">普通对话</h1>
+      <div class="topbar-actions" id="chatActions">
+        <span class="model-tag" id="modelTag"></span>
+        <button class="ghost-btn" id="newChatBtn" title="开始新会话">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          新会话
+        </button>
+        <button class="ghost-btn" id="clearBtn">清空</button>
+      </div>
+    </header>
+
+    <!-- 对话 -->
+    <section class="view active" id="view-chat">
+      <div class="msg-list" id="msgList"></div>
+      <div class="composer">
+        <div class="composer-box">
+          <textarea id="input" rows="1" placeholder="请输入您的问题..."></textarea>
+          <div class="composer-bar">
+            <label class="check"><input type="checkbox" id="ragKb"> 知识库问答</label>
+            <label class="check"><input type="checkbox" id="webSearch"> 联网搜索</label>
+            <label class="check"><input type="checkbox" id="mcpWeather"> MCP 天气</label>
+            <span class="hint" id="tokenHint">Enter 发送 · Shift+Enter 换行</span>
+            <div class="composer-btns">
+              <button class="ghost-btn" id="stopBtn" hidden>停止</button>
+              <button class="send-btn" id="sendBtn" title="发送">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 文生图 -->
+    <section class="view" id="view-t2i">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="notice">
+            文生图用的是百炼 <b>qwen-image</b> 同步接口：一次请求直接等到结果图，通常 10~40 秒，
+            张数越多等得越久。结果已经转成图片数据回到页面里，关掉页面就没了，<b>请及时下载保存</b>。
+          </div>
+          <div class="field">
+            <label for="t2iPrompt">画面描述（提示词）</label>
+            <textarea id="t2iPrompt" rows="3" placeholder="例如：一只戴着宇航员头盔的橘猫，卡通风格，纯色背景，细节丰富"></textarea>
+          </div>
+          <div class="field">
+            <label for="t2iNegative">不希望出现的内容（反向提示词，可留空）</label>
+            <input type="text" id="t2iNegative" placeholder="例如：模糊、多余的手指、文字水印">
+          </div>
+          <div class="field grid">
+            <div>
+              <label for="t2iModel">生成模型</label>
+              <select id="t2iModel"></select>
+            </div>
+            <div>
+              <label for="t2iSize">出图尺寸</label>
+              <select id="t2iSize"></select>
+            </div>
+            <div>
+              <label for="t2iN">生成张数</label>
+              <select id="t2iN"></select>
+            </div>
+          </div>
+          <div class="field row">
+            <button class="primary-btn" id="t2iRun">开始生成</button>
+            <button class="ghost-btn" id="t2iClear">清空结果</button>
+            <span class="hint" id="t2iHint"></span>
+          </div>
+          <div class="field">
+            <label>结果</label>
+            <div class="gallery" id="t2iResult"><span class="placeholder">暂无结果</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 图生图 -->
+    <section class="view" id="view-i2i">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="notice">
+            图生图 = 参考图 + 提示词 → 新图，同样由 <b>qwen-image</b> 完成。参考图转成 base64 直接提交，
+            <b>不需要公网图片地址</b>，本机就能跑通；提示词写「改成什么样」，越具体越稳。
+          </div>
+          <div class="field">
+            <label>参考图</label>
+            <div class="drop" id="i2iDrop">
+              <input type="file" id="i2iFile" accept="image/*" hidden>
+              <p>点击选择或拖拽图片到此处</p>
+              <p class="sub">jpg / png / webp，单张小于 4MB</p>
+            </div>
+            <div class="preview" id="i2iPreview" hidden>
+              <img id="i2iImg" alt="参考图预览">
+              <button class="ghost-btn sm" id="i2iRemove">移除</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="i2iPrompt">改成什么样（提示词）</label>
+            <textarea id="i2iPrompt" rows="3" placeholder="例如：把这只猫改成赛博朋克霓虹风格，背景换成雨夜街道"></textarea>
+          </div>
+          <div class="field grid">
+            <div>
+              <label for="i2iModel">生成模型</label>
+              <select id="i2iModel"></select>
+            </div>
+            <div>
+              <label for="i2iSize">出图尺寸</label>
+              <select id="i2iSize"></select>
+            </div>
+            <div>
+              <label for="i2iN">生成张数</label>
+              <select id="i2iN"></select>
+            </div>
+          </div>
+          <div class="field row">
+            <button class="primary-btn" id="i2iRun">开始生成</button>
+            <button class="ghost-btn" id="i2iClear">清空结果</button>
+            <span class="hint" id="i2iHint"></span>
+          </div>
+          <div class="field">
+            <label>结果</label>
+            <div class="gallery" id="i2iResult"><span class="placeholder">暂无结果</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 图片理解 -->
+    <section class="view" id="view-image">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="field">
+            <label>选择图片</label>
+            <div class="drop" id="drop">
+              <input type="file" id="file" accept="image/*" hidden>
+              <p>点击选择或拖拽图片到此处</p>
+              <p class="sub">支持 jpg / png / webp，单张建议小于 4MB</p>
+            </div>
+            <div class="preview" id="preview" hidden>
+              <img id="previewImg" alt="预览">
+              <button class="ghost-btn sm" id="removeImg">移除</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="imgPrompt">处理要求</label>
+            <textarea id="imgPrompt" rows="3" placeholder="例如：详细描述这张图片的内容 / 提取图中全部文字 / 分析图表结论"></textarea>
+          </div>
+          <div class="field row">
+            <button class="primary-btn" id="imgRun">开始处理</button>
+            <button class="ghost-btn" id="imgClear">清空结果</button>
+            <span class="hint" id="imgHint"></span>
+          </div>
+          <div class="field">
+            <label>结果</label>
+            <div class="result" id="imgResult"><span class="placeholder">暂无结果</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 知识库（RAG）资料管理 -->
+    <section class="view" id="view-kb">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="notice">
+            RAG 四步：<b>切片</b> → <b>向量化</b> → <b>存本地 kb/*.json</b> → <b>检索命中片段拼进 system 再问模型</b>。
+            向量由百炼 <b>text-embedding-v3</b> 生成（复用 <code>config.py</code> 里那把 Key，没有第二个密钥），
+            相似度算的是余弦，纯 Python 写的，没装 numpy 也没用向量数据库。
+          </div>
+          <div class="field">
+            <label>知识库状态</label>
+            <p class="kb-stats" id="kbStats">未加载</p>
+          </div>
+          <div class="field">
+            <label>上传文档</label>
+            <div class="drop" id="kbDrop">
+              <input type="file" id="kbFile" accept=".md,.markdown,.txt,.text,text/plain" hidden multiple>
+              <p>点击选择或拖拽文本文件到此处（可以一次选多个）</p>
+              <p class="sub">md / txt，UTF-8 或 GBK 都能读，单份不超过 8 万字</p>
+            </div>
+            <p class="hint" id="kbHint"></p>
+          </div>
+          <div class="field">
+            <label>已入库文档</label>
+            <div class="kb-docs" id="kbDocs"><span class="placeholder">暂无文档</span></div>
+          </div>
+
+          <div class="divider">检索测试</div>
+          <div class="field">
+            <label for="kbQuery">只跑检索、不调模型，用来看切片和相似度合不合理（不花 token）</label>
+            <div class="inline">
+              <input type="text" id="kbQuery" placeholder="例如：静态目录为什么会泄露密钥">
+              <button class="primary-btn" id="kbSearchBtn">检索</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>命中片段</label>
+            <div class="kb-hits" id="kbHits"><span class="placeholder">暂无结果</span></div>
+          </div>
+
+          <div class="divider">问答缓存</div>
+          <div class="field">
+            <label>向量库形态的问答缓存</label>
+            <p class="notice" id="kbCacheIntro">
+              两种情况自动生效：<b>温度锁在 0 的角色</b>（课程老师 / 医生 / 知识库问答，以及普通对话的默认值）
+              和<b>勾了「知识库问答」</b>的对话。每次回答完把这轮<b>问题向量 + 答案 + 引用</b>写进
+              <code>kb/collections/qa.json</code>。下次换个问法再问，先拿问题向量在这份集合里做一次
+              最近邻检索，<b>相似度过阈值就直接回存好的答案，0 token、不调模型</b>；
+              温度调到 0 以上（想要每次给新的，比如取名）就不查缓存，MCP 天气和识图也不缓存。
+              删文档或改检索参数时，相关缓存条目会自动失效。
+            </p>
+            <p class="kb-stats" id="kbCacheStats">未加载</p>
+          </div>
+          <div class="field">
+            <label for="kbCacheQuery">缓存探测：只查缓存、不调模型，看这句问题会不会命中（不花 token）</label>
+            <div class="inline">
+              <input type="text" id="kbCacheQuery" placeholder="例如：检索阈值默认值是多少来着">
+              <button class="primary-btn" id="kbCacheBtn">探测</button>
+              <button class="ghost-btn" id="kbCacheClear">清空缓存</button>
+            </div>
+            <p class="hint" id="kbCacheHint"></p>
+          </div>
+          <div class="field">
+            <label>已存问答（作用域 = 模型 + 检索/联网开关 + 温度 + 人设，四样全同才会互相复用；勾一次知识库就是另一个桶）</label>
+            <div class="kb-docs" id="kbCacheList"><span class="placeholder">暂无缓存</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 角色提示词编辑（老师 / 医生 / 周公解梦 / 婴儿取名共用） -->
+    <section class="view" id="view-prompt">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="notice">
+            这里改的是该角色的<b>系统提示词</b>（system prompt）：它决定模型用什么人设、什么格式回答。
+            保存后只对当前浏览器里的当前账号生效，下次在「对话」里选到该角色即已应用。
+          </div>
+          <div class="field">
+            <label for="promptRole">选择角色</label>
+            <select id="promptRole"></select>
+          </div>
+          <div class="field">
+            <label for="promptText">系统提示词（system）</label>
+            <textarea id="promptText" rows="14" placeholder="这个角色应该怎么说话、遵守哪些格式要求"></textarea>
+          </div>
+          <div class="field row">
+            <button class="primary-btn" id="savePrompt">保存提示词</button>
+            <button class="ghost-btn" id="resetPrompt">恢复 config.js 默认</button>
+            <button class="ghost-btn" id="gotoChat">去这个角色对话</button>
+            <span class="hint" id="promptHint"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 参数配置 -->
+    <section class="view" id="view-settings">
+      <div class="panel">
+        <div class="panel-body">
+          <div class="notice">
+            本页由 <code>api.py</code> 托管，大模型请求经后端转发，API Key 只写在 <code>config.py</code> 里、不会下发到浏览器。
+            下方的模型与参数保存在浏览器本地，随每次请求发给后端。
+          </div>
+          <div class="field">
+            <label>服务地址 baseUrl</label>
+            <input type="text" id="cfgBaseUrl" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+          </div>
+          <div class="field">
+            <label>API Key（由后端保管）</label>
+            <p class="hint" id="keyMask"></p>
+          </div>
+          <div class="field">
+            <label>模型 model</label>
+            <select id="cfgModel"></select>
+          </div>
+          <div class="field grid four">
+            <div>
+              <label for="cfgTemp">温度 temperature</label>
+              <input type="number" id="cfgTemp" min="0" max="2" step="0.1">
+            </div>
+            <div>
+              <label for="cfgSeed">随机种子 seed（0=不发）</label>
+              <input type="number" id="cfgSeed" min="0" step="1">
+            </div>
+            <div>
+              <label for="cfgMax">最大 token（0=不限）</label>
+              <input type="number" id="cfgMax" min="0" step="1">
+            </div>
+            <div>
+              <label for="cfgLimit">历史轮数（0=全部）</label>
+              <input type="number" id="cfgLimit" min="0" step="1">
+            </div>
+          </div>
+          <div class="field">
+            <p class="hint">温度 0 + 固定 seed 保证同一道题每次给的<b>结论和形状</b>一样（实测关掉缓存连问三次，
+              有一次把算式加了空格、换了措辞，但选哪个从不漂）；<b>一个字都不差</b>靠问答缓存兜住：
+              温度锁 0 的角色每轮回答都存进 kb/collections/qa.json，同义改写也回放同一份文本。
+              温度只要大于 0，百炼即使给了同一个 seed 也仍会换写法（实测 0.2 连问三次得到三种答案），
+              所以温度 &gt;0 的角色不查也不写缓存。
+              内置角色自带的温度会覆盖这里：课程老师 / 医生 / 知识库问答锁在 0，
+              婴儿取名、周公解梦、爱莉希雅故意留 0.8~0.9（那三个要的就是每次给一批新的）。</p>
+          </div>
+          <div class="field row">
+            <label class="check"><input type="checkbox" id="cfgStream"> 流式输出（打字机效果）</label>
+          </div>
+          <div class="field row">
+            <button class="primary-btn" id="saveCfg">保存配置</button>
+            <button class="ghost-btn" id="testCfg">测试连接</button>
+            <button class="ghost-btn" id="resetCfg">恢复 config.js 默认</button>
+            <span class="hint" id="cfgHint"></span>
+          </div>
+          <div class="field">
+            <label>快捷切换服务商</label>
+            <div class="presets" id="presets"></div>
+          </div>
+
+          <div class="divider">修改密码</div>
+          <div class="field grid">
+            <div>
+              <label for="pwdOld">原密码</label>
+              <input type="password" id="pwdOld" autocomplete="current-password">
+            </div>
+            <div>
+              <label for="pwdNew">新密码</label>
+              <input type="password" id="pwdNew" autocomplete="new-password">
+            </div>
+            <div>
+              <label for="pwdNew2">确认新密码</label>
+              <input type="password" id="pwdNew2" autocomplete="new-password">
+            </div>
+          </div>
+          <div class="field row">
+            <button class="primary-btn" id="savePwd">修改密码</button>
+            <span class="hint" id="pwdHint">改密成功后当前登录会失效，需要用新密码重新登录。</span>
+          </div>
+
+          <div class="divider">自定义角色</div>
+          <div class="field">
+            <div class="role-list" id="roleList"></div>
+            <div class="inline">
+              <input type="text" id="newRoleName" placeholder="角色名称">
+              <button class="ghost-btn sm" id="addRole">添加</button>
+            </div>
+            <textarea id="newRoleSystem" rows="2" placeholder="该角色的系统提示词（它应该怎样回答）"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="js/markdown.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
